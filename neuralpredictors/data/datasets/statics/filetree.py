@@ -1,5 +1,7 @@
 import logging
 from zipfile import ZipFile
+import numpy as np
+import contextlib
 
 from ...exceptions import DoesNotExistException
 from ...transforms import StaticTransform
@@ -64,3 +66,45 @@ class FileTreeDataset(FileTreeDatasetBase):
         """
         if not (self.basepath / "data/{}".format(attr)).exists():
             raise DoesNotExistException("Link target does not exist")
+
+@contextlib.contextmanager
+def temp_seed(seed):
+    state = np.random.get_state()
+    np.random.seed(seed)
+    try:
+        yield
+    finally:
+        np.random.set_state(state)
+
+
+class ShuffledFileTreeDataset(FileTreeDataset):
+    def __init__(self, path = None, shuffle_dimensions = None, *args, **kwargs):
+        print(shuffle_dimensions)
+        super().__init__(path, *args, **kwargs)
+        # check shuffle_dims for which dimension needs to be shuffled
+        # crete a smaart permutation of the indices for these keys and store
+        self.__shuffle_idx = {}
+        self.shuffle_dimensions = shuffle_dimensions
+        
+        if self.shuffle_dimensions:
+            for data_key, seed in self.shuffle_dimensions.items():
+                with temp_seed(seed):
+                    self.__shuffle_idx[data_key] = np.random.permutation(len(self))
+                    print(self.__shuffle_idx[data_key])
+
+    def __getitem__(self, item):
+        # load data from cache or disk
+        ret = []
+        for data_key in self.data_keys:
+            if self.use_cache and item in self._cache[data_key]:
+                ret.append(self._cache[data_key][item])
+            else:
+                tmp_item = self.__shuffle_idx[data_key][item] if data_key in self.__shuffle_idx else item
+                if data_key in self.trial_info.keys():
+                    val = self.trial_info[data_key][tmp_item : tmp_item + 1]
+                else:
+                    datapath = self.resolve_data_path(data_key)
+                    val = np.load(datapath / "{}.npy".format(tmp_item))
+                if self.use_cache:
+                    self._cache[data_key][item] = val
+                ret.append(val)    
