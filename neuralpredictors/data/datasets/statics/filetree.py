@@ -79,10 +79,9 @@ def temp_seed(seed):
 
 class ShuffledFileTreeDataset(FileTreeDataset):
     def __init__(self, path = None, shuffle_dimensions = None, *args, **kwargs):
-        print(shuffle_dimensions)
         super().__init__(path, *args, **kwargs)
         # check shuffle_dims for which dimension needs to be shuffled
-        # crete a smaart permutation of the indices for these keys and store
+        # crete a permutation of the indices for these keys and store
         self.__shuffle_idx = {}
         self.shuffle_dimensions = shuffle_dimensions
         
@@ -90,7 +89,7 @@ class ShuffledFileTreeDataset(FileTreeDataset):
             for data_key, seed in self.shuffle_dimensions.items():
                 with temp_seed(seed):
                     self.__shuffle_idx[data_key] = np.random.permutation(len(self))
-                    print(self.__shuffle_idx[data_key])
+                    print(self.__shuffle_idx)
 
     def __getitem__(self, item):
         # load data from cache or disk
@@ -99,12 +98,30 @@ class ShuffledFileTreeDataset(FileTreeDataset):
             if self.use_cache and item in self._cache[data_key]:
                 ret.append(self._cache[data_key][item])
             else:
+                # for the data_key to be shuffled, change the item to permuted item
                 tmp_item = self.__shuffle_idx[data_key][item] if data_key in self.__shuffle_idx else item
                 if data_key in self.trial_info.keys():
-                    val = self.trial_info[data_key][tmp_item : tmp_item + 1]
+                    val = self.trial_info[data_key][tmp_item : tmp_item + 1] 
                 else:
                     datapath = self.resolve_data_path(data_key)
                     val = np.load(datapath / "{}.npy".format(tmp_item))
                 if self.use_cache:
                     self._cache[data_key][item] = val
                 ret.append(val)    
+        
+        # create data point and transform
+        x = self.data_point(*ret)
+
+        for tr in self.transforms:
+            # ensure only specified types of transforms are used
+            assert isinstance(tr, self._transform_types)
+            x = tr(x)
+
+        # apply output rename if necessary
+        if self.rename_output:
+            x = self._output_point(*x)
+
+        if self.output_dict:
+            x = x._asdict()
+
+        return x
