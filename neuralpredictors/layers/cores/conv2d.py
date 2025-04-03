@@ -239,14 +239,29 @@ class Stacked2dCore(ConvCore, nn.Module):
             bias=self.bias,
         )
 
+    def add_final_conv_layer(self, layer: OrderedDict, l: int) -> None:
+        layer[self.conv_layer_name] = self.ConvLayer(
+            in_channels=self.hidden_channels[l - 1]
+            if not self.skip > 1
+            else min(self.skip, l) * self.hidden_channels[0],
+            out_channels=self.hidden_channels[l],
+            kernel_size=self.hidden_kern[l - 1],
+            stride=self.hidden_kern[l-1],
+            padding=self.hidden_padding or ((self.hidden_kern[l - 1] - 1) * self.hidden_dilation + 1) // 2,
+            dilation=self.hidden_dilation,
+            bias=self.bias,
+        )
+
     def add_subsequent_layers(self):
         if not isinstance(self.hidden_kern, Iterable):
             self.hidden_kern = [self.hidden_kern] * (self.num_layers - 1)
 
         for l in range(1, self.num_layers):
             layer = OrderedDict()
-
-            self.add_subsequent_conv_layer(layer, l)
+            if l==self.num_layers-1:
+                self.add_final_conv_layer(layer,l)
+            else:
+                self.add_subsequent_conv_layer(layer, l)
             self.add_bn_layer(layer, l)
             self.add_activation(layer)
             self.features.add_module("layer{}".format(l), nn.Sequential(layer))
