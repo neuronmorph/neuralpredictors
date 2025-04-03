@@ -50,6 +50,7 @@ class Stacked2dCore(ConvCore, nn.Module):
         gamma_input=0.0,
         skip=0,
         stride=1,
+        final_stride_as_kernel_size=False,
         input_stride=1,
         final_nonlinearity=True,
         elu_shift=(0, 0),
@@ -152,6 +153,7 @@ class Stacked2dCore(ConvCore, nn.Module):
         self.activation_config = nonlinearity_config if nonlinearity_config is not None else {}
 
         self.stride = stride
+        self.final_stride_as_kernel_size = final_stride_as_kernel_size
         self.input_stride = input_stride
         self.use_avg_reg = use_avg_reg
         if use_avg_reg:
@@ -258,7 +260,7 @@ class Stacked2dCore(ConvCore, nn.Module):
 
         for l in range(1, self.num_layers):
             layer = OrderedDict()
-            if l==self.num_layers-1:
+            if l==self.num_layers-1 and self.final_stride_as_kernel_size:
                 self.add_final_conv_layer(layer,l)
             else:
                 self.add_subsequent_conv_layer(layer, l)
