@@ -51,6 +51,7 @@ class Stacked2dCore(ConvCore, nn.Module):
         skip=0,
         stride=1,
         final_stride_as_kernel_size=False,
+        astro_stride=False,
         input_stride=1,
         final_nonlinearity=True,
         elu_shift=(0, 0),
@@ -154,6 +155,7 @@ class Stacked2dCore(ConvCore, nn.Module):
 
         self.stride = stride
         self.final_stride_as_kernel_size = final_stride_as_kernel_size
+        self.astro_stride = astro_stride
         self.input_stride = input_stride
         self.use_avg_reg = use_avg_reg
         if use_avg_reg:
@@ -220,7 +222,9 @@ class Stacked2dCore(ConvCore, nn.Module):
             self.input_channels,
             self.hidden_channels[0],
             self.input_kern,
-            stride=self.input_stride,
+            stride=self.input_stride
+            if not self.astro_stride
+            else self.input_kern,
             padding=self.input_kern // 2 if self.pad_input else 0,
             bias=self.bias and not self.batch_norm,
         )
@@ -235,7 +239,9 @@ class Stacked2dCore(ConvCore, nn.Module):
             else min(self.skip, l) * self.hidden_channels[0],
             out_channels=self.hidden_channels[l],
             kernel_size=self.hidden_kern[l - 1],
-            stride=self.stride,
+            stride=self.stride
+            if not self.astro_stride
+            else self.hidden_kern[l - 1],
             padding=self.hidden_padding or ((self.hidden_kern[l - 1] - 1) * self.hidden_dilation + 1) // 2,
             dilation=self.hidden_dilation,
             bias=self.bias,
