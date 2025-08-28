@@ -9,6 +9,14 @@ from .gaussian import (
     GeneralizedFullGaussianReadout2d,
     RemappedGaussian2d,
     UltraSparse,
+    FullGaussian2d_Gumbel_softmax_scheduled_tau,
+    FullGaussian2d_REINFORCE,
+    FullGaussian_3d_sample_grid,
+    FullGaussian2d_learnable_z_tanh,
+    FullGaussian2d_Gumbel_softmax_learnable_tau,
+    FullGaussian2d_Gumbel_softmax,
+    FullGaussian2d_learnable_z,
+    FullGaussian2d_adaptive_reg
 )
 from .multi_readout import MultiReadoutBase, MultiReadoutSharedParametersBase
 from .point_pooled import (
