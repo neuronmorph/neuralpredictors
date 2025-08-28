@@ -1431,9 +1431,9 @@ class UltraSparse(Readout):
 
 class FullGaussian_3d_sample_grid(Readout):
     """
-    Sparse Readout with 3d sample grid. 
-    MLP that maps anatomical coordinates to grid positions now outputs 3 [x,y,z] values. 
-    So bilinear interpolation is done in 3d, instead of normal 2d. 
+    Sparse Readout with 3d sample grid.
+    MLP that maps anatomical coordinates to grid positions now outputs 3 [x,y,z] values.
+    So bilinear interpolation is done in 3d, instead of normal 2d.
 
     Based on FullGaussian2d. Refer to Args description from FullGaussian2d.
 
@@ -1793,8 +1793,8 @@ class FullGaussian_3d_sample_grid(Readout):
 
 class FullGaussian2d_learnable_z(Readout):
     """
-    Sparse Readout with learnable channel per neuron. 
-    Learnable channel parameter [z] is unconstrained.  
+    Sparse Readout with learnable channel per neuron.
+    Learnable channel parameter [z] is unconstrained.
 
     Based on FullGaussian2d. Refer to Args description from FullGaussian2d.
 
@@ -2165,8 +2165,8 @@ class FullGaussian2d_learnable_z(Readout):
 
 class FullGaussian2d_learnable_z_tanh(Readout):
     """
-    Sparse Readout with learnable channel per neuron. 
-    Learnable channel parameter [z] is constrained with tanh for stability and for grid sampler.  
+    Sparse Readout with learnable channel per neuron.
+    Learnable channel parameter [z] is constrained with tanh for stability and for grid sampler.
 
     Based on FullGaussian2d. Refer to Args description from FullGaussian2d.
 
@@ -2542,7 +2542,7 @@ class FullGaussian2d_learnable_z_tanh(Readout):
 
 class FullGaussian2d_Gumbel_softmax(Readout):
     """
-    Sparse Readout using Gumbel-Softmax distribution to sample a single channel per neuron. 
+    Sparse Readout using Gumbel-Softmax distribution to sample a single channel per neuron.
     Basic form. Fixed tau at 1.0.
 
     Based on FullGaussian2d. Refer to Args description from FullGaussian2d.
@@ -2908,8 +2908,8 @@ class FullGaussian2d_Gumbel_softmax(Readout):
 
 class FullGaussian2d_Gumbel_softmax_learnable_tau(Readout):
     """
-    Sparse Readout using Gumbel-Softmax distribution to sample a single channel per neuron. 
-    Temperature parameter of Gumbel-Softmax is a learnable parameter.  
+    Sparse Readout using Gumbel-Softmax distribution to sample a single channel per neuron.
+    Temperature parameter of Gumbel-Softmax is a learnable parameter.
 
     Based on FullGaussian2d. Refer to Args description from FullGaussian2d.
 
@@ -3274,8 +3274,8 @@ class FullGaussian2d_Gumbel_softmax_learnable_tau(Readout):
 
 class FullGaussian2d_Gumbel_softmax_scheduled_tau(Readout):
     """
-    Sparse Readout using Gumbel-Softmax distribution to sample a single channel per neuron. 
-    Temperature parameter of Gumbel-Softmax follows a schedule. 
+    Sparse Readout using Gumbel-Softmax distribution to sample a single channel per neuron.
+    Temperature parameter of Gumbel-Softmax follows a schedule.
 
     Based on FullGaussian2d. Refer to Args description from FullGaussian2d.
 
@@ -3299,7 +3299,7 @@ class FullGaussian2d_Gumbel_softmax_scheduled_tau(Readout):
         feature_reg_weight=None,
         gamma_readout=None,  # depricated, use feature_reg_weight instead
         return_weighted_features=False,
-        initial_tau = 10.0,
+        initial_tau=10.0,
         **kwargs,
     ):
 
@@ -3531,9 +3531,7 @@ class FullGaussian2d_Gumbel_softmax_scheduled_tau(Readout):
             self.register_buffer("feature_sharing_index", torch.from_numpy(sharing_idx))
             self._shared_features = True
         else:
-            self._features = Parameter(
-                torch.Tensor(1, 1, 1, self.outdims)
-            )  
+            self._features = Parameter(torch.Tensor(1, 1, 1, self.outdims))
             self._shared_features = False
 
     def initialize_shared_grid(self, match_ids=None, shared_grid=None):
