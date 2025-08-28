@@ -1431,52 +1431,11 @@ class UltraSparse(Readout):
 
 class FullGaussian_3d_sample_grid(Readout):
     """
-    A readout using a spatial transformer layer whose positions are sampled from one Gaussian per neuron. Mean
-    and covariance of that Gaussian are learned.
+    Sparse Readout with 3d sample grid. 
+    MLP that maps anatomical coordinates to grid positions now outputs 3 [x,y,z] values. 
+    So bilinear interpolation is done in 3d, instead of normal 2d. 
 
-    Args:
-        in_shape (list, tuple): shape of the input feature map [channels, width, height]
-        outdims (int): number of output units
-        bias (bool): adds a bias term
-        init_mu_range (float): initialises the the mean with Uniform([-init_range, init_range])
-                            [expected: positive value <=1]. Default: 0.1
-        init_sigma (float): The standard deviation of the Gaussian with `init_sigma` when `gauss_type` is
-            'isotropic' or 'uncorrelated'. When `gauss_type='full'` initialize the square root of the
-            covariance matrix with with Uniform([-init_sigma, init_sigma]). Default: 1
-        batch_sample (bool): if True, samples a position for each image in the batch separately
-                            [default: True as it decreases convergence time and performs just as well]
-        align_corners (bool): Keyword agrument to gridsample for bilinear interpolation.
-                It changed behavior in PyTorch 1.3. The default of align_corners = True is setting the
-                behavior to pre PyTorch 1.3 functionality for comparability.
-        gauss_type (str): Which Gaussian to use. Options are 'isotropic', 'uncorrelated', or 'full' (default).
-        grid_mean_predictor (dict): Parameters for a predictor of the mean grid locations. Has to have a form like
-                        {
-                        'hidden_layers':0,
-                        'hidden_features':20,
-                        'final_tanh': False,
-                        }
-        shared_features (dict): Used when the feature vectors are shared (within readout between neurons) or between
-                this readout and other readouts. Has to be a dictionary of the form
-               {
-                    'match_ids': (numpy.array),
-                    'shared_features': torch.nn.Parameter or None
-                }
-                The match_ids are used to match things that should be shared within or across scans.
-                If `shared_features` is None, this readout will create its own features. If it is set to
-                a feature Parameter of another readout, it will replace the features of this readout. It will be
-                access in increasing order of the sorted unique match_ids. For instance, if match_ids=[2,0,0,1],
-                there should be 3 features in order [0,1,2]. When this readout creates features, it will do so in
-                that order.
-        shared_grid (dict): Like `shared_features`. Use dictionary like
-               {
-                    'match_ids': (numpy.array),
-                    'shared_grid': torch.nn.Parameter or None
-                }
-                See documentation of `shared_features` for specification.
-
-        source_grid (numpy.array):
-                Source grid for the grid_mean_predictor.
-                Needs to be of size neurons x grid_mean_predictor[input_dimensions]
+    Based on FullGaussian2d. Refer to Args description from FullGaussian2d.
 
     """
 
@@ -1722,10 +1681,6 @@ class FullGaussian_3d_sample_grid(Readout):
             self.register_buffer("feature_sharing_index", torch.from_numpy(sharing_idx))
             self._shared_features = True
         else:
-            # self._features = Parameter(
-            #     torch.Tensor(1, c, 1, self.outdims)
-            # )  # feature weights for each channel of the core
-            # self._shared_features = False
             self._features = Parameter(
                 torch.Tensor(1, 1, 1, self.outdims)
             )  # feature weights for each channel of the core
@@ -1818,7 +1773,8 @@ class FullGaussian_3d_sample_grid(Readout):
 
     def __repr__(self):
         c, w, h = self.in_shape
-        r = self.gauss_type + " "
+        r = "Sparse Readout. 3d sample grid.\n"
+        r += self.gauss_type + " "
         r += self.__class__.__name__ + " (" + "{} x {} x {}".format(c, w, h) + " -> " + str(self.outdims) + ")"
         if self.bias is not None:
             r += " with bias"
@@ -1837,52 +1793,10 @@ class FullGaussian_3d_sample_grid(Readout):
 
 class FullGaussian2d_learnable_z(Readout):
     """
-    A readout using a spatial transformer layer whose positions are sampled from one Gaussian per neuron. Mean
-    and covariance of that Gaussian are learned.
+    Sparse Readout with learnable channel per neuron. 
+    Learnable channel parameter [z] is unconstrained.  
 
-    Args:
-        in_shape (list, tuple): shape of the input feature map [channels, width, height]
-        outdims (int): number of output units
-        bias (bool): adds a bias term
-        init_mu_range (float): initialises the the mean with Uniform([-init_range, init_range])
-                            [expected: positive value <=1]. Default: 0.1
-        init_sigma (float): The standard deviation of the Gaussian with `init_sigma` when `gauss_type` is
-            'isotropic' or 'uncorrelated'. When `gauss_type='full'` initialize the square root of the
-            covariance matrix with with Uniform([-init_sigma, init_sigma]). Default: 1
-        batch_sample (bool): if True, samples a position for each image in the batch separately
-                            [default: True as it decreases convergence time and performs just as well]
-        align_corners (bool): Keyword agrument to gridsample for bilinear interpolation.
-                It changed behavior in PyTorch 1.3. The default of align_corners = True is setting the
-                behavior to pre PyTorch 1.3 functionality for comparability.
-        gauss_type (str): Which Gaussian to use. Options are 'isotropic', 'uncorrelated', or 'full' (default).
-        grid_mean_predictor (dict): Parameters for a predictor of the mean grid locations. Has to have a form like
-                        {
-                        'hidden_layers':0,
-                        'hidden_features':20,
-                        'final_tanh': False,
-                        }
-        shared_features (dict): Used when the feature vectors are shared (within readout between neurons) or between
-                this readout and other readouts. Has to be a dictionary of the form
-               {
-                    'match_ids': (numpy.array),
-                    'shared_features': torch.nn.Parameter or None
-                }
-                The match_ids are used to match things that should be shared within or across scans.
-                If `shared_features` is None, this readout will create its own features. If it is set to
-                a feature Parameter of another readout, it will replace the features of this readout. It will be
-                access in increasing order of the sorted unique match_ids. For instance, if match_ids=[2,0,0,1],
-                there should be 3 features in order [0,1,2]. When this readout creates features, it will do so in
-                that order.
-        shared_grid (dict): Like `shared_features`. Use dictionary like
-               {
-                    'match_ids': (numpy.array),
-                    'shared_grid': torch.nn.Parameter or None
-                }
-                See documentation of `shared_features` for specification.
-
-        source_grid (numpy.array):
-                Source grid for the grid_mean_predictor.
-                Needs to be of size neurons x grid_mean_predictor[input_dimensions]
+    Based on FullGaussian2d. Refer to Args description from FullGaussian2d.
 
     """
 
@@ -2231,7 +2145,8 @@ class FullGaussian2d_learnable_z(Readout):
 
     def __repr__(self):
         c, w, h = self.in_shape
-        r = self.gauss_type + " "
+        r = "Sparse Readout. Learnable z (channel) unconstrained.\n"
+        r += self.gauss_type + " "
         r += self.__class__.__name__ + " (" + "{} x {} x {}".format(c, w, h) + " -> " + str(self.outdims) + ")"
         if self.bias is not None:
             r += " with bias"
@@ -2250,52 +2165,10 @@ class FullGaussian2d_learnable_z(Readout):
 
 class FullGaussian2d_learnable_z_tanh(Readout):
     """
-    A readout using a spatial transformer layer whose positions are sampled from one Gaussian per neuron. Mean
-    and covariance of that Gaussian are learned.
+    Sparse Readout with learnable channel per neuron. 
+    Learnable channel parameter [z] is constrained with tanh for stability and for grid sampler.  
 
-    Args:
-        in_shape (list, tuple): shape of the input feature map [channels, width, height]
-        outdims (int): number of output units
-        bias (bool): adds a bias term
-        init_mu_range (float): initialises the the mean with Uniform([-init_range, init_range])
-                            [expected: positive value <=1]. Default: 0.1
-        init_sigma (float): The standard deviation of the Gaussian with `init_sigma` when `gauss_type` is
-            'isotropic' or 'uncorrelated'. When `gauss_type='full'` initialize the square root of the
-            covariance matrix with with Uniform([-init_sigma, init_sigma]). Default: 1
-        batch_sample (bool): if True, samples a position for each image in the batch separately
-                            [default: True as it decreases convergence time and performs just as well]
-        align_corners (bool): Keyword agrument to gridsample for bilinear interpolation.
-                It changed behavior in PyTorch 1.3. The default of align_corners = True is setting the
-                behavior to pre PyTorch 1.3 functionality for comparability.
-        gauss_type (str): Which Gaussian to use. Options are 'isotropic', 'uncorrelated', or 'full' (default).
-        grid_mean_predictor (dict): Parameters for a predictor of the mean grid locations. Has to have a form like
-                        {
-                        'hidden_layers':0,
-                        'hidden_features':20,
-                        'final_tanh': False,
-                        }
-        shared_features (dict): Used when the feature vectors are shared (within readout between neurons) or between
-                this readout and other readouts. Has to be a dictionary of the form
-               {
-                    'match_ids': (numpy.array),
-                    'shared_features': torch.nn.Parameter or None
-                }
-                The match_ids are used to match things that should be shared within or across scans.
-                If `shared_features` is None, this readout will create its own features. If it is set to
-                a feature Parameter of another readout, it will replace the features of this readout. It will be
-                access in increasing order of the sorted unique match_ids. For instance, if match_ids=[2,0,0,1],
-                there should be 3 features in order [0,1,2]. When this readout creates features, it will do so in
-                that order.
-        shared_grid (dict): Like `shared_features`. Use dictionary like
-               {
-                    'match_ids': (numpy.array),
-                    'shared_grid': torch.nn.Parameter or None
-                }
-                See documentation of `shared_features` for specification.
-
-        source_grid (numpy.array):
-                Source grid for the grid_mean_predictor.
-                Needs to be of size neurons x grid_mean_predictor[input_dimensions]
+    Based on FullGaussian2d. Refer to Args description from FullGaussian2d.
 
     """
 
@@ -2649,7 +2522,8 @@ class FullGaussian2d_learnable_z_tanh(Readout):
 
     def __repr__(self):
         c, w, h = self.in_shape
-        r = self.gauss_type + " "
+        r = "Sparse Readout. Learnable z (channel) constrained with tanh.\n"
+        r += self.gauss_type + " "
         r += self.__class__.__name__ + " (" + "{} x {} x {}".format(c, w, h) + " -> " + str(self.outdims) + ")"
         if self.bias is not None:
             r += " with bias"
@@ -2668,52 +2542,10 @@ class FullGaussian2d_learnable_z_tanh(Readout):
 
 class FullGaussian2d_Gumbel_softmax(Readout):
     """
-    A readout using a spatial transformer layer whose positions are sampled from one Gaussian per neuron. Mean
-    and covariance of that Gaussian are learned.
+    Sparse Readout using Gumbel-Softmax distribution to sample a single channel per neuron. 
+    Basic form. Fixed tau at 1.0.
 
-    Args:
-        in_shape (list, tuple): shape of the input feature map [channels, width, height]
-        outdims (int): number of output units
-        bias (bool): adds a bias term
-        init_mu_range (float): initialises the the mean with Uniform([-init_range, init_range])
-                            [expected: positive value <=1]. Default: 0.1
-        init_sigma (float): The standard deviation of the Gaussian with `init_sigma` when `gauss_type` is
-            'isotropic' or 'uncorrelated'. When `gauss_type='full'` initialize the square root of the
-            covariance matrix with with Uniform([-init_sigma, init_sigma]). Default: 1
-        batch_sample (bool): if True, samples a position for each image in the batch separately
-                            [default: True as it decreases convergence time and performs just as well]
-        align_corners (bool): Keyword agrument to gridsample for bilinear interpolation.
-                It changed behavior in PyTorch 1.3. The default of align_corners = True is setting the
-                behavior to pre PyTorch 1.3 functionality for comparability.
-        gauss_type (str): Which Gaussian to use. Options are 'isotropic', 'uncorrelated', or 'full' (default).
-        grid_mean_predictor (dict): Parameters for a predictor of the mean grid locations. Has to have a form like
-                        {
-                        'hidden_layers':0,
-                        'hidden_features':20,
-                        'final_tanh': False,
-                        }
-        shared_features (dict): Used when the feature vectors are shared (within readout between neurons) or between
-                this readout and other readouts. Has to be a dictionary of the form
-               {
-                    'match_ids': (numpy.array),
-                    'shared_features': torch.nn.Parameter or None
-                }
-                The match_ids are used to match things that should be shared within or across scans.
-                If `shared_features` is None, this readout will create its own features. If it is set to
-                a feature Parameter of another readout, it will replace the features of this readout. It will be
-                access in increasing order of the sorted unique match_ids. For instance, if match_ids=[2,0,0,1],
-                there should be 3 features in order [0,1,2]. When this readout creates features, it will do so in
-                that order.
-        shared_grid (dict): Like `shared_features`. Use dictionary like
-               {
-                    'match_ids': (numpy.array),
-                    'shared_grid': torch.nn.Parameter or None
-                }
-                See documentation of `shared_features` for specification.
-
-        source_grid (numpy.array):
-                Source grid for the grid_mean_predictor.
-                Needs to be of size neurons x grid_mean_predictor[input_dimensions]
+    Based on FullGaussian2d. Refer to Args description from FullGaussian2d.
 
     """
 
@@ -3043,8 +2875,6 @@ class FullGaussian2d_Gumbel_softmax(Readout):
                 bias = bias[out_idx]
             outdims = len(out_idx)
 
-        # x = x.view(N, 1, c, w, h)
-        # shift = F.pad(shift, (0, 1), "constant", 0)
         if shift is not None:
             grid = grid + shift[:, None, None, :]
 
@@ -3052,24 +2882,14 @@ class FullGaussian2d_Gumbel_softmax(Readout):
         y = (y * z.T.unsqueeze(0).unsqueeze(-1)).sum(dim=1).view(N, outdims)
         y = y * feat.squeeze()
 
-        # # if .shape[3] ==1124:
-        # #     print('this is stop')
-        # grid = torch.cat([grid, z.view(1, outdims, 1, 1).expand(N, outdims, 1, 1)], dim=-1)
-        # # y = F.grid_sample(x, grid, align_corners=self.align_corners)
-        # y = F.grid_sample(x.view(N, 1, c, w, h), grid.unsqueeze(3), align_corners=self.align_corners)
-        # y = y.squeeze(1)
-        # # y = (y.squeeze(-1) * feat).sum(1).view(N, outdims)
-        # y2 = y.squeeze(-1)
-        # y3 = y2.squeeze(-1) * feat
-        # y = y3.sum(0).view(N, outdims)
-
         if self.bias is not None:
             y = y + bias
         return y
 
     def __repr__(self):
         c, w, h = self.in_shape
-        r = self.gauss_type + " "
+        r = "Sparse Readout. Gumbel-Softmax. Fixed tau=1.0.\n"
+        r += self.gauss_type + " "
         r += self.__class__.__name__ + " (" + "{} x {} x {}".format(c, w, h) + " -> " + str(self.outdims) + ")"
         if self.bias is not None:
             r += " with bias"
@@ -3088,52 +2908,10 @@ class FullGaussian2d_Gumbel_softmax(Readout):
 
 class FullGaussian2d_Gumbel_softmax_learnable_tau(Readout):
     """
-    A readout using a spatial transformer layer whose positions are sampled from one Gaussian per neuron. Mean
-    and covariance of that Gaussian are learned.
+    Sparse Readout using Gumbel-Softmax distribution to sample a single channel per neuron. 
+    Temperature parameter of Gumbel-Softmax is a learnable parameter.  
 
-    Args:
-        in_shape (list, tuple): shape of the input feature map [channels, width, height]
-        outdims (int): number of output units
-        bias (bool): adds a bias term
-        init_mu_range (float): initialises the the mean with Uniform([-init_range, init_range])
-                            [expected: positive value <=1]. Default: 0.1
-        init_sigma (float): The standard deviation of the Gaussian with `init_sigma` when `gauss_type` is
-            'isotropic' or 'uncorrelated'. When `gauss_type='full'` initialize the square root of the
-            covariance matrix with with Uniform([-init_sigma, init_sigma]). Default: 1
-        batch_sample (bool): if True, samples a position for each image in the batch separately
-                            [default: True as it decreases convergence time and performs just as well]
-        align_corners (bool): Keyword agrument to gridsample for bilinear interpolation.
-                It changed behavior in PyTorch 1.3. The default of align_corners = True is setting the
-                behavior to pre PyTorch 1.3 functionality for comparability.
-        gauss_type (str): Which Gaussian to use. Options are 'isotropic', 'uncorrelated', or 'full' (default).
-        grid_mean_predictor (dict): Parameters for a predictor of the mean grid locations. Has to have a form like
-                        {
-                        'hidden_layers':0,
-                        'hidden_features':20,
-                        'final_tanh': False,
-                        }
-        shared_features (dict): Used when the feature vectors are shared (within readout between neurons) or between
-                this readout and other readouts. Has to be a dictionary of the form
-               {
-                    'match_ids': (numpy.array),
-                    'shared_features': torch.nn.Parameter or None
-                }
-                The match_ids are used to match things that should be shared within or across scans.
-                If `shared_features` is None, this readout will create its own features. If it is set to
-                a feature Parameter of another readout, it will replace the features of this readout. It will be
-                access in increasing order of the sorted unique match_ids. For instance, if match_ids=[2,0,0,1],
-                there should be 3 features in order [0,1,2]. When this readout creates features, it will do so in
-                that order.
-        shared_grid (dict): Like `shared_features`. Use dictionary like
-               {
-                    'match_ids': (numpy.array),
-                    'shared_grid': torch.nn.Parameter or None
-                }
-                See documentation of `shared_features` for specification.
-
-        source_grid (numpy.array):
-                Source grid for the grid_mean_predictor.
-                Needs to be of size neurons x grid_mean_predictor[input_dimensions]
+    Based on FullGaussian2d. Refer to Args description from FullGaussian2d.
 
     """
 
@@ -3386,10 +3164,6 @@ class FullGaussian2d_Gumbel_softmax_learnable_tau(Readout):
             self.register_buffer("feature_sharing_index", torch.from_numpy(sharing_idx))
             self._shared_features = True
         else:
-            # self._features = Parameter(
-            #     torch.Tensor(1, c, 1, self.outdims)
-            # )  # feature weights for each channel of the core
-            # self._shared_features = False
             self._features = Parameter(
                 torch.Tensor(1, 1, 1, self.outdims)
             )  # feature weights for each channel of the core
@@ -3441,7 +3215,7 @@ class FullGaussian2d_Gumbel_softmax_learnable_tau(Readout):
         c_in, w_in, h_in = self.in_shape
         if (c_in, w_in, h_in) != (c, w, h):
             warnings.warn("the specified feature map dimension is not the readout's expected input dimension")
-        # feat = self.features.view(1, c, self.outdims)
+
         feat = self.features.view(1, 1, self.outdims)
         bias = self.bias
         outdims = self.outdims
@@ -3467,8 +3241,6 @@ class FullGaussian2d_Gumbel_softmax_learnable_tau(Readout):
                 bias = bias[out_idx]
             outdims = len(out_idx)
 
-        # x = x.view(N, 1, c, w, h)
-        # shift = F.pad(shift, (0, 1), "constant", 0)
         if shift is not None:
             grid = grid + shift[:, None, None, :]
 
@@ -3476,24 +3248,14 @@ class FullGaussian2d_Gumbel_softmax_learnable_tau(Readout):
         y = (y * z.T.unsqueeze(0).unsqueeze(-1)).sum(dim=1).view(N, outdims)
         y = y * feat.squeeze()
 
-        # # if .shape[3] ==1124:
-        # #     print('this is stop')
-        # grid = torch.cat([grid, z.view(1, outdims, 1, 1).expand(N, outdims, 1, 1)], dim=-1)
-        # # y = F.grid_sample(x, grid, align_corners=self.align_corners)
-        # y = F.grid_sample(x.view(N, 1, c, w, h), grid.unsqueeze(3), align_corners=self.align_corners)
-        # y = y.squeeze(1)
-        # # y = (y.squeeze(-1) * feat).sum(1).view(N, outdims)
-        # y2 = y.squeeze(-1)
-        # y3 = y2.squeeze(-1) * feat
-        # y = y3.sum(0).view(N, outdims)
-
         if self.bias is not None:
             y = y + bias
         return y
 
     def __repr__(self):
         c, w, h = self.in_shape
-        r = self.gauss_type + " "
+        r = "Sparse Readout. Gumbel-Softmax with learnable temperature (tau).\n"
+        r += self.gauss_type + " "
         r += self.__class__.__name__ + " (" + "{} x {} x {}".format(c, w, h) + " -> " + str(self.outdims) + ")"
         if self.bias is not None:
             r += " with bias"
@@ -3512,52 +3274,10 @@ class FullGaussian2d_Gumbel_softmax_learnable_tau(Readout):
 
 class FullGaussian2d_Gumbel_softmax_scheduled_tau(Readout):
     """
-    A readout using a spatial transformer layer whose positions are sampled from one Gaussian per neuron. Mean
-    and covariance of that Gaussian are learned.
+    Sparse Readout using Gumbel-Softmax distribution to sample a single channel per neuron. 
+    Temperature parameter of Gumbel-Softmax follows a schedule. 
 
-    Args:
-        in_shape (list, tuple): shape of the input feature map [channels, width, height]
-        outdims (int): number of output units
-        bias (bool): adds a bias term
-        init_mu_range (float): initialises the the mean with Uniform([-init_range, init_range])
-                            [expected: positive value <=1]. Default: 0.1
-        init_sigma (float): The standard deviation of the Gaussian with `init_sigma` when `gauss_type` is
-            'isotropic' or 'uncorrelated'. When `gauss_type='full'` initialize the square root of the
-            covariance matrix with with Uniform([-init_sigma, init_sigma]). Default: 1
-        batch_sample (bool): if True, samples a position for each image in the batch separately
-                            [default: True as it decreases convergence time and performs just as well]
-        align_corners (bool): Keyword agrument to gridsample for bilinear interpolation.
-                It changed behavior in PyTorch 1.3. The default of align_corners = True is setting the
-                behavior to pre PyTorch 1.3 functionality for comparability.
-        gauss_type (str): Which Gaussian to use. Options are 'isotropic', 'uncorrelated', or 'full' (default).
-        grid_mean_predictor (dict): Parameters for a predictor of the mean grid locations. Has to have a form like
-                        {
-                        'hidden_layers':0,
-                        'hidden_features':20,
-                        'final_tanh': False,
-                        }
-        shared_features (dict): Used when the feature vectors are shared (within readout between neurons) or between
-                this readout and other readouts. Has to be a dictionary of the form
-               {
-                    'match_ids': (numpy.array),
-                    'shared_features': torch.nn.Parameter or None
-                }
-                The match_ids are used to match things that should be shared within or across scans.
-                If `shared_features` is None, this readout will create its own features. If it is set to
-                a feature Parameter of another readout, it will replace the features of this readout. It will be
-                access in increasing order of the sorted unique match_ids. For instance, if match_ids=[2,0,0,1],
-                there should be 3 features in order [0,1,2]. When this readout creates features, it will do so in
-                that order.
-        shared_grid (dict): Like `shared_features`. Use dictionary like
-               {
-                    'match_ids': (numpy.array),
-                    'shared_grid': torch.nn.Parameter or None
-                }
-                See documentation of `shared_features` for specification.
-
-        source_grid (numpy.array):
-                Source grid for the grid_mean_predictor.
-                Needs to be of size neurons x grid_mean_predictor[input_dimensions]
+    Based on FullGaussian2d. Refer to Args description from FullGaussian2d.
 
     """
 
@@ -3579,6 +3299,7 @@ class FullGaussian2d_Gumbel_softmax_scheduled_tau(Readout):
         feature_reg_weight=None,
         gamma_readout=None,  # depricated, use feature_reg_weight instead
         return_weighted_features=False,
+        initial_tau = 10.0,
         **kwargs,
     ):
 
@@ -3634,7 +3355,6 @@ class FullGaussian2d_Gumbel_softmax_scheduled_tau(Readout):
         )  # in_shape[0] should be channel dimension from core output
         self.register_parameter("z_logits", self.z_logits)
 
-        initial_tau = 10.0
         self.register_buffer("tau", torch.tensor(initial_tau, dtype=torch.float32))
 
         if bias:
@@ -3811,13 +3531,9 @@ class FullGaussian2d_Gumbel_softmax_scheduled_tau(Readout):
             self.register_buffer("feature_sharing_index", torch.from_numpy(sharing_idx))
             self._shared_features = True
         else:
-            # self._features = Parameter(
-            #     torch.Tensor(1, c, 1, self.outdims)
-            # )  # feature weights for each channel of the core
-            # self._shared_features = False
             self._features = Parameter(
                 torch.Tensor(1, 1, 1, self.outdims)
-            )  # feature weights for each channel of the core
+            )  
             self._shared_features = False
 
     def initialize_shared_grid(self, match_ids=None, shared_grid=None):
@@ -3870,6 +3586,7 @@ class FullGaussian2d_Gumbel_softmax_scheduled_tau(Readout):
         feat = self.features.view(1, 1, self.outdims)
         bias = self.bias
         outdims = self.outdims
+
         z = F.gumbel_softmax(self.z_logits, tau=self.tau, hard=True)
 
         if self.batch_sample:
