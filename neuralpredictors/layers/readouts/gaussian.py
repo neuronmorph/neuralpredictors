@@ -3712,7 +3712,8 @@ class FullGaussian2d_REINFORCE(Readout):
         self.initialize_features(**(shared_features or {}))
 
         # self.z_logits = Parameter(torch.randn(outdims, in_shape[0]))
-        self.z_logits = Parameter(torch.empty(outdims, in_shape[0]).uniform_(3.8, 4.2))
+        # self.z_logits = Parameter(torch.empty(outdims, in_shape[0]).uniform_(3.8, 4.2))
+        self.z_logits = Parameter(torch.empty(outdims, in_shape[0]).normal_(mean=0.0, std=0.01))
         self.register_parameter("z_logits", self.z_logits)
 
         if bias:
