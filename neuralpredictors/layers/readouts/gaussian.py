@@ -3585,7 +3585,12 @@ class FullGaussian2d_Gumbel_softmax_scheduled_tau(Readout):
         bias = self.bias
         outdims = self.outdims
 
-        z = F.gumbel_softmax(self.z_logits, tau=self.tau, hard=True)
+        if self.training:
+            z = F.gumbel_softmax(self.z_logits, tau=self.tau, hard=True)
+        else:
+            indices = torch.argmax(self.z_logits, dim=-1)           
+            z = F.one_hot(indices, num_classes=self.z_logits.size(-1))
+
 
         if self.batch_sample:
             # sample the grid_locations separately per image per batch
