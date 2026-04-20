@@ -1,5 +1,6 @@
 import json
 import logging
+import sys
 from collections import namedtuple
 from datetime import datetime
 from pathlib import Path
@@ -90,8 +91,10 @@ class TransformDataset(Dataset):
             # this version IS serializable in pickle
             self.data_point = default_image_datapoint
         else:
-            # this version is NOT - you cannot use this with a dataloader with num_workers > 1
-            self.data_point = namedtuple("DataPoint", data_keys)
+            # Register at module level with a unique name so pickle can resolve it
+            _name = "DataPoint_" + "_".join(data_keys)
+            self.data_point = namedtuple(_name, data_keys)
+            setattr(sys.modules[__name__], _name, self.data_point)
 
     def transform(self, x, exclude=None):
         """
