@@ -91,10 +91,14 @@ class TransformDataset(Dataset):
             # this version IS serializable in pickle
             self.data_point = default_image_datapoint
         else:
-            # Register at module level with a unique name so pickle can resolve it
+            # Register at module level with a unique name so pickle can resolve it.
+            # Reuse existing class if already registered — workers recreating the dataset
+            # must get the same class object, otherwise pickle raises PicklingError.
             _name = "DataPoint_" + "_".join(data_keys)
-            self.data_point = namedtuple(_name, data_keys)
-            setattr(sys.modules[__name__], _name, self.data_point)
+            _module = sys.modules[__name__]
+            if not hasattr(_module, _name):
+                setattr(_module, _name, namedtuple(_name, data_keys))
+            self.data_point = getattr(_module, _name)
 
     def transform(self, x, exclude=None):
         """
@@ -213,7 +217,7 @@ class FileTreeDatasetBase(TransformDataset):
     # specify list of transform types that are acceptable
     _transform_types = (DataTransform,)
 
-    def __init__(self, dirname, *data_keys, transforms=None, use_cache=True, output_rename=None, output_dict=False):
+    def __init__(self, dirname, *data_keys, transforms=None, use_cache=False, output_rename=None, output_dict=False):
         """
         Dataset stored as a file tree. The tree needs to have the subdirs data, meta, meta/neurons, meta/statistics,
         and meta/trials. Please refer to convert_static_h5_dataset_to_folder in neuralpredictors.data.utils for an
