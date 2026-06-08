@@ -3379,9 +3379,10 @@ class FullGaussian2d_Gumbel_softmax_scheduled_tau(Readout):
     @property
     def features(self):
         if self._shared_features:
-            return self.scales * self._features[..., self.feature_sharing_index]
+            raw_features = self.scales * self._features[..., self.feature_sharing_index]
         else:
-            return self._features
+            raw_features = self._features
+        return torch.abs(raw_features)
 
     @property
     def grid(self):
